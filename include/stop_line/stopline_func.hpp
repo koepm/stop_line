@@ -1,10 +1,17 @@
-#include <stop_line/stopline.hpp>
+#include <rclcpp/rclcpp.hpp>
+#include <opencv2/opencv.hpp>
+#include <cv_bridge/cv_bridge.h>
+#include <std_msgs/msg/int32.hpp>
+#include <std_msgs/msg/float64.hpp>
+#include <sensor_msgs/msg/image.hpp>
+#include <image_transport/image_transport.hpp>
 #include <iostream>
 
-
+cv::Mat warp_matrix;
+int is_stop_ = 100;
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat StopLine::make_zeros(const cv::Mat& img)
+cv::Mat make_zeros(const cv::Mat& img)
 {
     return cv::Mat::zeros(img.rows, img.cols, img.type());
 }
@@ -13,7 +20,7 @@ cv::Mat StopLine::make_zeros(const cv::Mat& img)
 
 //-----------------------------------------------------------------------------------------------------------
 // 이 함수를 통해 리턴된 객체 => bird_eye_viewed_img
-cv::Mat StopLine::to_bird_eye_view(const cv::Mat& raw_img)
+cv::Mat to_bird_eye_view(const cv::Mat& raw_img)
 {
     int width = raw_img.cols;
 	int height = raw_img.rows;
@@ -42,25 +49,25 @@ cv::Mat StopLine::to_bird_eye_view(const cv::Mat& raw_img)
 	warp_dst_point[3].x = width - warp_dst_point[2].x;
 	warp_dst_point[3].y = 0;
 
-	StopLine::warp_matrix = cv::getPerspectiveTransform(warp_src_point, warp_dst_point);
-    invert(StopLine::warp_matrix, warp_matrix_inv);
+	warp_matrix = cv::getPerspectiveTransform(warp_src_point, warp_dst_point);
+    invert(warp_matrix, warp_matrix_inv);
 
     // 변환 매트릭스 타입 확인
-    if (StopLine::warp_matrix.type() != CV_32F && StopLine::warp_matrix.type() != CV_64F)
+    if (warp_matrix.type() != CV_32F && warp_matrix.type() != CV_64F)
     {
         std::cout << "Converting matrix type to CV_32F" << std::endl;
-        StopLine::warp_matrix.convertTo(StopLine::warp_matrix, CV_32F);
+        warp_matrix.convertTo(warp_matrix, CV_32F);
     }
 
     cv::Mat bird_eye_viewed_img;
-    cv::warpPerspective(raw_img, bird_eye_viewed_img, StopLine::warp_matrix, cv::Size(width, height));
+    cv::warpPerspective(raw_img, bird_eye_viewed_img, warp_matrix, cv::Size(width, height));
     return bird_eye_viewed_img;
 }
 
 
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat StopLine::find_line(const cv::Mat& raw_img, const cv::Mat& bird_eye_viewed_img)
+cv::Mat find_line(const cv::Mat& raw_img, const cv::Mat& bird_eye_viewed_img)
 {
     cv::Mat img_warp_clone, img_warp_clone_hls, img_show;
 
@@ -99,7 +106,7 @@ cv::Mat StopLine::find_line(const cv::Mat& raw_img, const cv::Mat& bird_eye_view
     cv::Mat processed_img;
     cv::Mat warp_matrix_inv;
     // Invert the matrix
-    cv::invert(StopLine::warp_matrix, warp_matrix_inv);
+    cv::invert(warp_matrix, warp_matrix_inv);
 
     // Check the type of the matrix
     if (warp_matrix_inv.type() != CV_32F && warp_matrix_inv.type() != CV_64F)
@@ -117,7 +124,7 @@ cv::Mat StopLine::find_line(const cv::Mat& raw_img, const cv::Mat& bird_eye_view
 
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat StopLine::filterImg(const cv::Mat& imgUnwarp, const int toColorChannel, const int mode)
+cv::Mat filterImg(const cv::Mat& imgUnwarp, const int toColorChannel, const int mode)
 {
     cv::Mat imgConverted;
     cv::Mat imgOUT = cv::Mat::zeros(480, 640, CV_8UC1);
@@ -181,7 +188,7 @@ cv::Mat StopLine::filterImg(const cv::Mat& imgUnwarp, const int toColorChannel, 
 
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat StopLine::mask_filter(const cv::Mat& integraled_img, const int mask_width, const int mask_height, \
+cv::Mat mask_filter(const cv::Mat& integraled_img, const int mask_width, const int mask_height, \
 const int thresh)
 {
     int height = integraled_img.rows;
@@ -190,7 +197,6 @@ const int thresh)
     cv::Mat stop_line_mask_img = cv::Mat::zeros(height, width, CV_8UC3); // Initialize stop_img with zeros
     float mask[3];
     int sx = 0;
-    is_stop_ = 100;
 
     uint *image = (uint *)integraled_img.data;
     uchar *score_data = (uchar *)img_maskfilter.data;
@@ -281,7 +287,7 @@ const int thresh)
 
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat StopLine::hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white)
+cv::Mat hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white)
 {
 
     /* normalizing L color channel pixel from hls img. */
@@ -339,7 +345,7 @@ cv::Mat StopLine::hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white
 * @param 좌상단y값
 * @param 이미지높이
 */
-cv::Scalar StopLine::get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
+cv::Scalar get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
 const int img_width, const int img_top_left_y, const int img_height)
 {
     //GPT는 좌표를 다음과 같이 추천함 (y,x), (y+너비, x+높이)
@@ -359,7 +365,7 @@ const int img_width, const int img_top_left_y, const int img_height)
 * @param 영상처리된 이미지
 * @param 정지선까지의 거리 확인
 */
-int StopLine::show_return_distance(const cv::Mat& processed_img, int is_stop_)
+int show_return_distance(const cv::Mat& processed_img, int is_stop_)
 {
     int distance;
     std::string text;
