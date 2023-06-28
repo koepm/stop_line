@@ -7,7 +7,20 @@
 #include <image_transport/image_transport.hpp>
 #include <iostream>
 
+
+cv::Mat to_bird_eye_view(const cv::Mat& raw_img); // 이 함수를 통해 리턴된 객체 => bird_eye_viewd_img
+cv::Mat find_line(const cv::Mat& bird_eye_viewed_img);
+cv::Mat filterImg(const cv::Mat& imgUnwarp, const int toColorChannel, const int mode);	//지연
+cv::Mat make_zeros(const cv::Mat& img);	//지연
+cv::Mat mask_filter(const cv::Mat& integraled_img, const int mask_width, const int mask_height, \
+const int thresh);
+cv::Mat hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white);
+cv::Scalar get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
+const int img_width, const int img_top_left_y, const int img_height);
+int show_return_distance(const cv::Mat& processed_img);
+
 cv::Mat warp_matrix;
+cv::Mat warp_matrix_inv;
 int is_stop_ = 100;
 
 //-----------------------------------------------------------------------------------------------------------
@@ -24,8 +37,6 @@ cv::Mat to_bird_eye_view(const cv::Mat& raw_img)
 {
     int width = raw_img.cols;
 	int height = raw_img.rows;
-    //cv::Mat warp_matrix; -> 클래스 이동
-    cv::Mat warp_matrix_inv;
     cv::Point2f warp_src_point[4];
 	cv::Point2f warp_dst_point[4];
 
@@ -67,7 +78,7 @@ cv::Mat to_bird_eye_view(const cv::Mat& raw_img)
 
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat find_line(const cv::Mat& raw_img, const cv::Mat& bird_eye_viewed_img)
+cv::Mat find_line(const cv::Mat& bird_eye_viewed_img)
 {
     cv::Mat img_warp_clone, img_warp_clone_hls, img_show;
 
@@ -104,7 +115,7 @@ cv::Mat find_line(const cv::Mat& raw_img, const cv::Mat& bird_eye_viewed_img)
     img_mask = mask_filter(img_integral, 5, 5, 200);
 
     cv::Mat processed_img;
-    cv::Mat warp_matrix_inv;
+    //cv::Mat warp_matrix_inv;
     // Invert the matrix
     cv::invert(warp_matrix, warp_matrix_inv);
 
@@ -196,7 +207,7 @@ const int thresh)
     cv::Mat img_maskfilter = cv::Mat::zeros(height, width, CV_8UC1); // Initialize filter with zeros
     cv::Mat stop_line_mask_img = cv::Mat::zeros(height, width, CV_8UC3); // Initialize stop_img with zeros
     float mask[3];
-    int sx = 0;
+    //int sx = 0;
 
     uint *image = (uint *)integraled_img.data;
     uchar *score_data = (uchar *)img_maskfilter.data;
@@ -284,7 +295,26 @@ const int thresh)
     return stop_line_mask_img;
 }
 
+//-----------------------------------------------------------------------------------------------------------
+/*
+* @brief (GPT오류지적)영상에서 특정 위치의 픽셀 평균값 계산
+* @param 흰배경+버드아이뷰 이미지
+* @param 좌상단x값
+* @param 이미지너비
+* @param 좌상단y값
+* @param 이미지높이
+*/
+cv::Scalar get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
+const int img_width, const int img_top_left_y, const int img_height)
+{
+    //GPT는 좌표를 다음과 같이 추천함 (y,x), (y+너비, x+높이)
+    cv::Mat img_roi = bird_eye_viewed_img_with_white(cv::Rect(cv::Point(img_top_left_y, \
+    img_top_left_x), cv::Point(img_top_left_y + img_height, img_top_left_x + img_width)));
 
+	cv::Scalar return_pixel_average = mean(img_roi);
+	// std::cout << return_pixel_average << std::endl;
+    return return_pixel_average;
+}
 
 //-----------------------------------------------------------------------------------------------------------
 cv::Mat hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white)
@@ -338,34 +368,11 @@ cv::Mat hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white)
 
 //-----------------------------------------------------------------------------------------------------------
 /*
-* @brief (GPT오류지적)영상에서 특정 위치의 픽셀 평균값 계산
-* @param 흰배경+버드아이뷰 이미지
-* @param 좌상단x값
-* @param 이미지너비
-* @param 좌상단y값
-* @param 이미지높이
-*/
-cv::Scalar get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
-const int img_width, const int img_top_left_y, const int img_height)
-{
-    //GPT는 좌표를 다음과 같이 추천함 (y,x), (y+너비, x+높이)
-    cv::Mat img_roi = bird_eye_viewed_img_with_white(cv::Rect(cv::Point(img_top_left_y, \
-    img_top_left_x), cv::Point(img_top_left_y + img_height, img_top_left_x + img_width)));
-
-	cv::Scalar return_pixel_average = mean(img_roi);
-	// std::cout << return_pixel_average << std::endl;
-    return return_pixel_average;
-}
-
-
-
-//-----------------------------------------------------------------------------------------------------------
-/*
 * @brief 최종 영상처리된 이미지와 정지선까지의 거리를 나타냄
 * @param 영상처리된 이미지
 * @param 정지선까지의 거리 확인
 */
-int show_return_distance(const cv::Mat& processed_img, int is_stop_)
+int show_return_distance(const cv::Mat& processed_img)
 {
     int distance;
     std::string text;
@@ -416,6 +423,6 @@ int show_return_distance(const cv::Mat& processed_img, int is_stop_)
     }
 
     putText(processed_img, text, text_position, cv::FONT_HERSHEY_SIMPLEX, 3, text_color);
-
+    //printf("distance : %d\n", distance);
     return distance;
 }

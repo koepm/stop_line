@@ -1,9 +1,8 @@
-#include "stop_line/stopline_func.hpp"
+#include "stop_line/stopline_func.cpp"
 #include <std_msgs/msg/int16.hpp>
-#define LEFT_CAM 0
+#define CAM 4
 
 int first_run = 1;
-int count = 100;
 
 class StopLine : public rclcpp::Node
 {
@@ -14,14 +13,14 @@ public:
 
     distance_pub_ = this->create_publisher<std_msgs::msg::Int16>("where_center_point_needs",10);
     
-    cap_left_.open(LEFT_CAM);
-    cap_left_.set(cv::CAP_PROP_FRAME_WIDTH, 320);
-    cap_left_.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
+    cap_left_.open(CAM);
+    //cap_left_.set(cv::CAP_PROP_FRAME_WIDTH, 320);
+    //cap_left_.set(cv::CAP_PROP_FRAME_HEIGHT, 240);
 
     if (!cap_left_.isOpened())
     {
     	RCLCPP_ERROR(this->get_logger(), "Could not open video stream");
-    	return;
+        return;
     }
 
     image_processing();
@@ -29,7 +28,6 @@ public:
   }
 private:
     cv::VideoCapture cap_left_;
-    cv::Mat warp_matrix;
     rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr subscription_;
     rclcpp::Publisher<std_msgs::msg::Int16>::SharedPtr distance_pub_;
 
@@ -37,8 +35,10 @@ private:
     {
         while(rclcpp::ok())
         {
+            is_stop_ = 100;
             cv::Mat frame;
             cap_left_ >> frame;
+
             cv::Mat resized_img;
             cv::resize(frame, resized_img, cv::Size(640, 480), 0, 0);
 
@@ -76,19 +76,21 @@ private:
             cv::Mat re_resized_img;
             cv::resize(resized_img_clone, re_resized_img, cv::Size(641, 481), 0, 0);
 
-            cv::Mat find_line_result = find_line(bird_eye_viewed_clone, bird_eye_viewed);
+            cv::Mat find_line_result = find_line(bird_eye_viewed);
             cv::resize(find_line_result, find_line_result, re_resized_img.size());
 
             cv::Mat final;
             addWeighted(find_line_result, 1, re_resized_img, 1, 0, final);
-            count = show_return_distance(final, count);
-
-            distance_pub_->publish(count);
+            is_stop_ = show_return_distance(final);
+            
+            std_msgs::msg::Int16 msg;
+            msg.data = is_stop_;
+            distance_pub_->publish(msg);
 
             imshow("final", final);
             cv::waitKey(1);
         }
-        
+        //rclcpp::spin_some(this->get_node_base_interface());
     }
 };
 
