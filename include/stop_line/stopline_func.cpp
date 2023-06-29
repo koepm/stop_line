@@ -60,7 +60,7 @@ cv::Mat StopLine::to_bird_eye_view(const cv::Mat& raw_img)
 
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat StopLine::find_line(const cv::Mat& raw_img, const cv::Mat& bird_eye_viewed_img)
+cv::Mat StopLine::find_line(const cv::Mat& bird_eye_viewed_img)
 {
     cv::Mat img_warp_clone, img_warp_clone_hls, img_show;
 
@@ -189,8 +189,8 @@ const int thresh)
     cv::Mat img_maskfilter = cv::Mat::zeros(height, width, CV_8UC1); // Initialize filter with zeros
     cv::Mat stop_line_mask_img = cv::Mat::zeros(height, width, CV_8UC3); // Initialize stop_img with zeros
     float mask[3];
-    int sx = 0;
-    is_stop_ = 100;
+    //int sx = 0;
+    StopLine::is_stop_ = 100;
 
     uint *image = (uint *)integraled_img.data;
     uchar *score_data = (uchar *)img_maskfilter.data;
@@ -238,37 +238,37 @@ const int thresh)
             if (y < 33)
             {
                 std::cout << "stop line distance: 7M" << std::endl;
-                is_stop_ = 7;
+                StopLine::is_stop_ = 7;
             }
             else if (y < 94)
             {
                 std::cout << "stop line distance: 6M" << std::endl;
-                is_stop_ = 6;
+                StopLine::is_stop_ = 6;
             }
             else if (y < 152)
             {
                 std::cout << "stop line distance: 5M" << std::endl;
-                is_stop_ = 5;
+                StopLine::is_stop_ = 5;
             }
             else if (y < 216)
             {
                 std::cout << "stop line distance: 4M" << std::endl;
-                is_stop_ = 4;
+                StopLine::is_stop_ = 4;
             }
             else if (y < 288)
             {
                 std::cout << "stop line distance: 3M" << std::endl;
-                is_stop_ = 3;
+                StopLine::is_stop_ = 3;
             }
             else if (y < 367)
             {
                 std::cout << "stop line distance: 2M" << std::endl;
-                is_stop_ = 2;
+                StopLine::is_stop_ = 2;
             }
             else
             {
                 std::cout << "GO" << std::endl;
-                is_stop_ = 100;
+                StopLine::is_stop_ = 100;
             }
 
             break;
@@ -359,53 +359,53 @@ const int img_width, const int img_top_left_y, const int img_height)
 * @param 영상처리된 이미지
 * @param 정지선까지의 거리 확인
 */
-int StopLine::show_return_distance(const cv::Mat& processed_img, int is_stop_)
+int StopLine::show_return_distance(const cv::Mat& processed_img)
 {
     int distance;
     std::string text;
     cv::Point text_position(500, 100);
     cv::Scalar text_color(0, 0, 255);
 
-    if (is_stop_ == 7)
+    if (StopLine::is_stop_ == 7)
     {
-        distance = is_stop_;
-        text = std::to_string(is_stop_) + "M";
+        distance = StopLine::is_stop_;
+        text = std::to_string(distance) + "M";
     }
 
-    else if (is_stop_ == 6)
+    else if (StopLine::is_stop_ == 6)
     {
-        distance = is_stop_;
-        text = std::to_string(is_stop_) + "M";
-        // is_stop_=100;
+        distance = StopLine::is_stop_;
+        text = std::to_string(distance) + "M";
+        // StopLine::is_stop_=100;
     }
-    else if (is_stop_ == 5)
+    else if (StopLine::is_stop_ == 5)
     {
-        distance = is_stop_;
-        text = std::to_string(is_stop_) + "M";
-        // is_stop_=100;
+        distance = StopLine::is_stop_;
+        text = std::to_string(distance) + "M";
+        // StopLine::is_stop_=100;
     }
-    else if (is_stop_ == 4)
+    else if (StopLine::is_stop_ == 4)
     {
-        distance = is_stop_;
-        text = std::to_string(is_stop_) + "M";
-        // is_stop_ = 100;
+        distance = StopLine::is_stop_;
+        text = std::to_string(distance) + "M";
+        // StopLine::is_stop_ = 100;
     }
-    else if (is_stop_ == 3)
+    else if (StopLine::is_stop_ == 3)
     {
-        distance = is_stop_;
-        text = std::to_string(is_stop_) + "M";
-        // is_stop_ = 100;
+        distance = StopLine::is_stop_;
+        text = std::to_string(distance) + "M";
+        // StopLine::is_stop_ = 100;
     }
-    else if (is_stop_ == 2)
+    else if (StopLine::is_stop_ == 2)
     {
-        distance = is_stop_;
-        text = std::to_string(is_stop_) + "M";
-        is_stop_ = 100;
+        distance = StopLine::is_stop_;
+        text = std::to_string(distance) + "M";
+        StopLine::is_stop_ = 100;
     }
 
-    else if (is_stop_ == 100)
+    else if (StopLine::is_stop_ == 100)
     {
-        distance = is_stop_;
+        distance = StopLine::is_stop_;
         text = "Go";
     }
 
