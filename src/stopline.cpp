@@ -1,5 +1,5 @@
 #include "stop_line/stopline_func.cpp"
-#define CAM 2
+#define CAM 0
 
 StopLine::StopLine()
 : Node("find_stop_line")
@@ -12,11 +12,10 @@ StopLine::StopLine()
     if (!cap_.isOpened())
     {
     	RCLCPP_ERROR(this->get_logger(), "Could not open video stream");
-    	RCLCPP_ERROR(this->get_logger(), "Could not open video stream");
         return;
     }
 
-    timer_ = this->create_wall_timer(std::chrono::milliseconds(100), std::bind(&StopLine::image_processing, this)); 
+    timer_ = this->create_wall_timer(std::chrono::milliseconds(1), std::bind(&StopLine::image_processing, this)); 
 }
 
 void StopLine::image_processing()
