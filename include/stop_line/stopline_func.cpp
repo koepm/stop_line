@@ -1,23 +1,10 @@
-#include "stop_line/stopline.hpp"
+#include <stop_line/stopline.hpp>
+#include <iostream>
 
 
-cv::Mat to_bird_eye_view(const cv::Mat& raw_img); // 이 함수를 통해 리턴된 객체 => bird_eye_viewd_img
-cv::Mat find_line(const cv::Mat& bird_eye_viewed_img);
-cv::Mat filterImg(const cv::Mat& imgUnwarp, const int toColorChannel, const int mode);	//지연
-cv::Mat make_zeros(const cv::Mat& img);	//지연
-cv::Mat mask_filter(const cv::Mat& integraled_img, const int mask_width, const int mask_height, \
-const int thresh);
-cv::Mat hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white);
-cv::Scalar get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
-const int img_width, const int img_top_left_y, const int img_height);
-int show_return_distance(const cv::Mat& processed_img);
-
-cv::Mat warp_matrix;
-cv::Mat warp_matrix_inv;
-int is_stop_ = 100;
 
 //-----------------------------------------------------------------------------------------------------------
-cv::Mat make_zeros(const cv::Mat& img)
+cv::Mat StopLine::make_zeros(const cv::Mat& img)
 {
     return cv::Mat::zeros(img.rows, img.cols, img.type());
 }
@@ -26,10 +13,12 @@ cv::Mat make_zeros(const cv::Mat& img)
 
 //-----------------------------------------------------------------------------------------------------------
 // 이 함수를 통해 리턴된 객체 => bird_eye_viewed_img
-cv::Mat to_bird_eye_view(const cv::Mat& raw_img)
+cv::Mat StopLine::to_bird_eye_view(const cv::Mat& raw_img)
 {
     int width = raw_img.cols;
 	int height = raw_img.rows;
+    //cv::Mat warp_matrix; -> 클래스 이동
+    cv::Mat warp_matrix_inv;
     cv::Point2f warp_src_point[4];
 	cv::Point2f warp_dst_point[4];
 
@@ -53,18 +42,18 @@ cv::Mat to_bird_eye_view(const cv::Mat& raw_img)
 	warp_dst_point[3].x = width - warp_dst_point[2].x;
 	warp_dst_point[3].y = 0;
 
-	warp_matrix = cv::getPerspectiveTransform(warp_src_point, warp_dst_point);
-    invert(warp_matrix, warp_matrix_inv);
+	StopLine::warp_matrix = cv::getPerspectiveTransform(warp_src_point, warp_dst_point);
+    invert(StopLine::warp_matrix, warp_matrix_inv);
 
     // 변환 매트릭스 타입 확인
-    if (warp_matrix.type() != CV_32F && warp_matrix.type() != CV_64F)
+    if (StopLine::warp_matrix.type() != CV_32F && StopLine::warp_matrix.type() != CV_64F)
     {
         std::cout << "Converting matrix type to CV_32F" << std::endl;
-        warp_matrix.convertTo(warp_matrix, CV_32F);
+        StopLine::warp_matrix.convertTo(StopLine::warp_matrix, CV_32F);
     }
 
     cv::Mat bird_eye_viewed_img;
-    cv::warpPerspective(raw_img, bird_eye_viewed_img, warp_matrix, cv::Size(width, height));
+    cv::warpPerspective(raw_img, bird_eye_viewed_img, StopLine::warp_matrix, cv::Size(width, height));
     return bird_eye_viewed_img;
 }
 
@@ -108,9 +97,9 @@ cv::Mat StopLine::find_line(const cv::Mat& bird_eye_viewed_img)
     img_mask = mask_filter(img_integral, 5, 5, 200);
 
     cv::Mat processed_img;
-    //cv::Mat warp_matrix_inv;
+    cv::Mat warp_matrix_inv;
     // Invert the matrix
-    cv::invert(warp_matrix, warp_matrix_inv);
+    cv::invert(StopLine::warp_matrix, warp_matrix_inv);
 
     // Check the type of the matrix
     if (warp_matrix_inv.type() != CV_32F && warp_matrix_inv.type() != CV_64F)
@@ -289,26 +278,7 @@ const int thresh)
     return stop_line_mask_img;
 }
 
-//-----------------------------------------------------------------------------------------------------------
-/*
-* @brief (GPT오류지적)영상에서 특정 위치의 픽셀 평균값 계산
-* @param 흰배경+버드아이뷰 이미지
-* @param 좌상단x값
-* @param 이미지너비
-* @param 좌상단y값
-* @param 이미지높이
-*/
-cv::Scalar StopLine::get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
-const int img_width, const int img_top_left_y, const int img_height)
-{
-    //GPT는 좌표를 다음과 같이 추천함 (y,x), (y+너비, x+높이)
-    cv::Mat img_roi = bird_eye_viewed_img_with_white(cv::Rect(cv::Point(img_top_left_y, \
-    img_top_left_x), cv::Point(img_top_left_y + img_height, img_top_left_x + img_width)));
 
-	cv::Scalar return_pixel_average = mean(img_roi);
-	// std::cout << return_pixel_average << std::endl;
-    return return_pixel_average;
-}
 
 //-----------------------------------------------------------------------------------------------------------
 cv::Mat StopLine::hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white)
@@ -356,6 +326,29 @@ cv::Mat StopLine::hsl_binarization(const cv::Mat& bird_eye_viewed_img_with_white
     cv::threshold(imgNormal, hsl_2_binarized_img, lowThres, 255, cv::THRESH_BINARY);
 
     return hsl_2_binarized_img;
+}
+
+
+
+//-----------------------------------------------------------------------------------------------------------
+/*
+* @brief (GPT오류지적)영상에서 특정 위치의 픽셀 평균값 계산
+* @param 흰배경+버드아이뷰 이미지
+* @param 좌상단x값
+* @param 이미지너비
+* @param 좌상단y값
+* @param 이미지높이
+*/
+cv::Scalar StopLine::get_img_mean(const cv::Mat& bird_eye_viewed_img_with_white, const int img_top_left_x,\
+const int img_width, const int img_top_left_y, const int img_height)
+{
+    //GPT는 좌표를 다음과 같이 추천함 (y,x), (y+너비, x+높이)
+    cv::Mat img_roi = bird_eye_viewed_img_with_white(cv::Rect(cv::Point(img_top_left_y, \
+    img_top_left_x), cv::Point(img_top_left_y + img_height, img_top_left_x + img_width)));
+
+	cv::Scalar return_pixel_average = mean(img_roi);
+	// std::cout << return_pixel_average << std::endl;
+    return return_pixel_average;
 }
 
 
@@ -417,6 +410,6 @@ int StopLine::show_return_distance(const cv::Mat& processed_img)
     }
 
     putText(processed_img, text, text_position, cv::FONT_HERSHEY_SIMPLEX, 3, text_color);
-    //printf("distance : %d\n", distance);
+
     return distance;
 }
