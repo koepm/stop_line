@@ -12,6 +12,7 @@ StopLine::StopLine()
     if (!cap_.isOpened())
     {
     	RCLCPP_ERROR(this->get_logger(), "Could not open video stream");
+    	RCLCPP_ERROR(this->get_logger(), "Could not open video stream");
         return;
     }
 
